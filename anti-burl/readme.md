@@ -6,23 +6,22 @@ Takes URLs on stdin or from a file, fetches them concurrently, and prints detail
 
 To install the `anti-burl` command-line tool, ensure you have Go installed (version 1.16 or newer is recommended).
 
-There are two main ways to install it locally:
+You can install it using the following command:
+```bash
+go install github.com/0x1Jar/new-hacks/anti-burl
+```
+This command will fetch the module from its repository, compile the source code, and install the `anti-burl` binary to your Go binary directory (usually `$GOPATH/bin` or `$HOME/go/bin`). Make sure this directory is in your system's `PATH` to run the `anti-burl` command directly from any location.
 
-1.  **From within the `anti-burl` project directory:**
-    Navigate to the `anti-burl` directory (e.g., `/path/Documents/github/hacks/anti-burl`) and run:
-    ```bash
-    go install .
-    ```
-
-2.  **From the parent directory (`hacks`):**
-    If you are in the parent directory (`/path/Documents/github/hacks`), you can install it using its relative path:
-    ```bash
-    go install ./anti-burl
-    ```
-
-Either of these commands will compile the source code and install the `anti-burl` binary to your Go binary directory (usually `$GOPATH/bin` or `$HOME/go/bin`). Make sure this directory is in your system's `PATH` to run the `anti-burl` command directly from any location.
-
-(Note: The module path is `anti-burl`. Using `go install anti-burl@latest` would typically be for modules hosted on a version control system like GitHub, and requires the module to be published there.)
+For local development, you can still build and install from the project directory:
+Navigate to the `anti-burl` directory and run:
+```bash
+go install .
+```
+Or, from its parent directory:
+```bash
+go install ./anti-burl
+```
+(Note: The module path is now `github.com/0x1Jar/new-hacks/anti-burl`.)
 
 ## Usage
 
