@@ -30,11 +30,11 @@ var (
 
 // Global variables to hold flag values
 var (
-	concurrency      int
-	timeout          time.Duration
-	maxSize          int64
-	insecureSkip     bool
-	userAgent        string
+	concurrency  int
+	timeout      time.Duration
+	maxSize      int64
+	insecureSkip bool
+	userAgent    string
 )
 
 func main() {
@@ -44,6 +44,15 @@ func main() {
 	flag.Int64Var(&maxSize, "ms", maxSizeDefault, "Set the maximum response body size to read (bytes)")
 	flag.BoolVar(&insecureSkip, "k", true, "Skip TLS certificate verification")
 	flag.StringVar(&userAgent, "ua", userAgentDefault, "Set the User-Agent string")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s [options] [file]:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Reads URLs from stdin or a file, fetches them, and prints details for those returning 200 OK.\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nIf no file is specified, input is read from stdin.\n")
+		fmt.Fprintf(os.Stderr, "Output format: <status_code> <content_length_runes> <word_count> <url>\n")
+	}
 
 	flag.Parse()
 
