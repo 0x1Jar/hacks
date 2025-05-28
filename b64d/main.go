@@ -20,25 +20,36 @@ var ASCIIChar = &unicode.RangeTable{
 func main() {
 	flag.Parse()
 
+	var content string
+	var err error
+	var b []byte
+
 	filename := flag.Arg(0)
+
 	if filename == "" {
-		fmt.Fprintln(os.Stderr, "usage: b64d <filename>")
-		return
+		// Read from stdin if no filename is provided
+		b, err = ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error reading from stdin: %s\n", err)
+			return
+		}
+	} else {
+		// Read from file if filename is provided
+		f, errOpen := os.Open(filename)
+		if errOpen != nil {
+			fmt.Fprintf(os.Stderr, "error opening file: %s\n", errOpen)
+			return
+		}
+		defer f.Close()
+
+		b, err = ioutil.ReadAll(f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error reading from file: %s\n", err)
+			return
+		}
 	}
 
-	f, err := os.Open(filename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return
-	}
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return
-	}
-
-	content := string(b)
+	content = string(b)
 
 	// TODO: deal with urlencoded bits
 	re := regexp.MustCompile("[^A-Za-z0-9+/][a-zA-Z0-9+/]+={0,2}")
