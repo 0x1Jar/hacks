@@ -1,3 +1,10 @@
+# Compiled binary
 anti-burl
+
+# Local files
 urls
+
+# Editor/OS specific
 *.swp
+*.swo
+.DS_Store
