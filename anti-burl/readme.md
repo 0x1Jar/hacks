@@ -9,13 +9,13 @@ To install the `anti-burl` command-line tool, ensure you have Go installed (vers
 There are two main ways to install it locally:
 
 1.  **From within the `anti-burl` project directory:**
-    Navigate to the `anti-burl` directory (e.g., `/Users/0xjar/Documents/github/hacks/anti-burl`) and run:
+    Navigate to the `anti-burl` directory (e.g., `/path/Documents/github/hacks/anti-burl`) and run:
     ```bash
     go install .
     ```
 
 2.  **From the parent directory (`hacks`):**
-    If you are in the parent directory (`/Users/0xjar/Documents/github/hacks`), you can install it using its relative path:
+    If you are in the parent directory (`/path/Documents/github/hacks`), you can install it using its relative path:
     ```bash
     go install ./anti-burl
     ```
