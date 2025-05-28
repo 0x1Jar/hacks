@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net"
@@ -13,7 +14,11 @@ import (
 	"github.com/miekg/dns"
 )
 
+const defaultConcurrency = 20
+
 func main() {
+	concurrency := flag.Int("c", defaultConcurrency, "set the concurrency level")
+	flag.Parse()
 
 	servers := []string{
 		//"209.244.0.3",
@@ -65,7 +70,7 @@ func main() {
 	jobs := make(chan job)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := 0; i < *concurrency; i++ {
 		wg.Add(1)
 
 		go func() {
