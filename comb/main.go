@@ -45,21 +45,37 @@ func main() {
 		fileA, fileB = fileB, fileA
 	}
 
-	a := bufio.NewScanner(fileA)
-	for a.Scan() {
-		// rewind file B so we can scan it again
-		fileB.Seek(0, 0)
+	// Read the second file (fileB) into memory to avoid repeated seeks/scans
+	var linesB []string
+	scannerB := bufio.NewScanner(fileB)
+	for scannerB.Scan() {
+		linesB = append(linesB, scannerB.Text())
+	}
+	if err := scannerB.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "error reading %s: %v\n", flag.Arg(1), err) // Use actual filename based on flip or not
+		os.Exit(1)
+	}
+	fileB.Close() // Close fileB as it's now in memory
 
-		b := bufio.NewScanner(fileB)
-		for b.Scan() {
+	scannerA := bufio.NewScanner(fileA)
+	for scannerA.Scan() {
+		lineA := scannerA.Text()
+		for _, lineB := range linesB {
 			if flip {
-				fmt.Printf("%s%s%s\n", b.Text(), separator, a.Text())
+				// When flipped, fileA was original suffixFile, fileB was original prefixFile
+				// So, lineA is a suffix, lineB is a prefix
+				fmt.Printf("%s%s%s\n", lineB, separator, lineA)
 			} else {
-				fmt.Printf("%s%s%s\n", a.Text(), separator, b.Text())
+				// Normal mode: lineA is a prefix, lineB is a suffix
+				fmt.Printf("%s%s%s\n", lineA, separator, lineB)
 			}
 		}
 	}
-
+	if err := scannerA.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "error reading %s: %v\n", flag.Arg(0), err) // Use actual filename
+		os.Exit(1)
+	}
+	fileA.Close() // Close fileA
 }
 
 func init() {
