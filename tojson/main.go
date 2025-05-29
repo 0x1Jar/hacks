@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
@@ -42,6 +43,9 @@ func toArray(r io.Reader, args []string) interface{} {
 	for sc.Scan() {
 		lines = append(lines, sc.Text())
 	}
+	if err := sc.Err(); err != nil {
+		log.Fatalf("Error reading input for toArray: %v", err)
+	}
 	return lines
 }
 
@@ -51,6 +55,9 @@ func to2dArray(r io.Reader, args []string) interface{} {
 	for sc.Scan() {
 		parts := strings.Fields(sc.Text())
 		lines = append(lines, parts)
+	}
+	if err := sc.Err(); err != nil {
+		log.Fatalf("Error reading input for to2dArray: %v", err)
 	}
 	return lines
 }
@@ -74,6 +81,9 @@ func toMap(r io.Reader, args []string) interface{} {
 		}
 
 		lines = append(lines, line)
+	}
+	if err := sc.Err(); err != nil {
+		log.Fatalf("Error reading input for toMap: %v", err)
 	}
 	return lines
 }
