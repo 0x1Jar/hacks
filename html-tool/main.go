@@ -15,10 +15,16 @@ import (
 	"golang.org/x/net/html"
 )
 
+const defaultConcurrency = 20
+
+var (
+	showSource   bool
+	skipVerify   bool
+	concurrency  int
+)
+
 func extractSelector(r io.Reader, selector string) ([]string, error) {
-
 	out := []string{}
-
 	sel, err := css.Parse(selector)
 	if err != nil {
 		return out, err
@@ -133,74 +139,114 @@ type target struct {
 }
 
 func main() {
-	// TODO: support quiet mode (no errors)
-	// TODO: option to output file or url as context
-	// TODO: add concurrency flag
+	flag.BoolVar(&showSource, "s", false, "Prepend each output line with the source URL or filename")
+	flag.BoolVar(&showSource, "source", false, "Prepend each output line with the source URL or filename (long form)")
+	flag.BoolVar(&skipVerify, "skip-verify", false, "Skip TLS certificate verification for HTTPS URLs")
+	flag.IntVar(&concurrency, "c", defaultConcurrency, "Set the concurrency level for fetching URLs")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Accept URLs or filenames for HTML documents on stdin and extract parts of them.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: html-tool [global_options] <mode> [<mode_args>]\n\n")
+		fmt.Fprintf(os.Stderr, "Global Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nModes:\n")
+		fmt.Fprintf(os.Stderr, "  tags <tag-name1> [<tag-name2> ...]    Extract text contained in specified tags\n")
+		fmt.Fprintf(os.Stderr, "  attribs <attr-name1> [<attr-name2> ...] Extract values of specified attributes\n")
+		fmt.Fprintf(os.Stderr, "  comments                             Extract all HTML comments\n")
+		fmt.Fprintf(os.Stderr, "  query <css-selector>                 Extract text from elements matching CSS selector\n\n")
+		fmt.Fprintf(os.Stderr, "Examples:\n")
+		fmt.Fprintf(os.Stderr, "  cat urls.txt | html-tool tags title h1\n")
+		fmt.Fprintf(os.Stderr, "  find . -name '*.html' | html-tool -s attribs href src\n")
+		fmt.Fprintf(os.Stderr, "  echo \"http://example.com\" | html-tool -skip-verify -c 10 comments\n")
+		fmt.Fprintf(os.Stderr, "  echo \"http://example.com\" | html-tool query \"div.main > p\"\n")
+	}
 
 	flag.Parse()
 
-	// TODO: check mode is valid
-	mode := flag.Arg(0)
-	if mode == "" {
-		fmt.Println("Accept URLs or filenames for HTML documents on stdin and extract parts of them.")
-		fmt.Println("")
-		fmt.Println("Usage: html-tool <mode> [<args>]")
-		fmt.Println("")
-		fmt.Println("Modes:")
-		fmt.Println("	tags <tag-names>        Extract text contained in tags")
-		fmt.Println("	attribs <attrib-names>  Extract attribute values")
-		fmt.Println("	comments                Extract comments")
-		fmt.Println("")
-		fmt.Println("Examples:")
-		fmt.Println("	cat urls.txt | html-tool tags title a strong")
-		fmt.Println("	find . -type f -name \"*.html\" | html-tool attribs src href")
-		fmt.Println("	cat urls.txt | html-tool comments")
-		return
+	if flag.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "Error: Mode not specified.")
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	args := flag.Args()[1:]
+	mode := flag.Arg(0)
+	var modeArgs []string
+	if flag.NArg() > 1 {
+		modeArgs = flag.Args()[1:]
+	}
+
+	// Validate mode and modeArgs
+	switch mode {
+	case "tags", "attribs":
+		if len(modeArgs) == 0 {
+			fmt.Fprintf(os.Stderr, "Error: Mode '%s' requires at least one argument (tag/attribute name).\n", mode)
+			flag.Usage()
+			os.Exit(1)
+		}
+	case "comments":
+		if len(modeArgs) > 0 {
+			fmt.Fprintf(os.Stderr, "Error: Mode 'comments' does not take arguments.\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+	case "query":
+		if len(modeArgs) != 1 {
+			fmt.Fprintf(os.Stderr, "Error: Mode 'query' requires exactly one argument (CSS selector).\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "Error: Unsupported mode '%s'.\n", mode)
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	targets := make(chan *target)
-
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for t := range targets {
-			vals := []string{}
 
-			switch mode {
-			case "tags":
-				vals = extractTags(t.r, args)
-			case "attribs":
-				vals = extractAttribs(t.r, args)
-			case "comments":
-				vals = extractComments(t.r)
-			case "query":
+	for i := 0; i < concurrency; i++ { // Use a pool of workers for processing targets
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for t := range targets {
+				var vals []string
 				var err error
-				vals, err = extractSelector(t.r, flag.Arg(1))
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to parse CSS selector: %s\n", err)
-					break
+
+				switch mode {
+				case "tags":
+					vals = extractTags(t.r, modeArgs)
+				case "attribs":
+					vals = extractAttribs(t.r, modeArgs)
+				case "comments":
+					vals = extractComments(t.r)
+				case "query":
+					vals, err = extractSelector(t.r, modeArgs[0]) // modeArgs[0] is the selector
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Error processing selector for %s: %v\n", t.location, err)
+						t.r.Close()
+						continue
+					}
 				}
+				t.r.Close() // Close the reader as soon as processing is done
 
-			default:
-				fmt.Fprintf(os.Stderr, "unsupported mode '%s'\n", mode)
-				break
+				for _, v := range vals {
+					if showSource {
+						fmt.Printf("%s %s\n", t.location, v)
+					} else {
+						fmt.Println(v)
+					}
+				}
 			}
-
-			for _, v := range vals {
-				fmt.Println(v)
-			}
-
-			// don't forget to close the reader when we're done with it!
-			t.r.Close()
-		}
-		wg.Done()
-	}()
+		}()
+	}
 
 	p := gahttp.NewPipeline()
-	p.SetClient(gahttp.NewClient(gahttp.SkipVerify))
-	p.SetConcurrency(20)
+	if skipVerify {
+		client := gahttp.NewClient(gahttp.SkipVerify)
+		p.SetClient(client)
+	}
+	// If not skipVerify, the pipeline uses its default client.
+	p.SetConcurrency(concurrency)
 
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
