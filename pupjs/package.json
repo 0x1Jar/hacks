@@ -1,8 +1,8 @@
 {
   "name": "pupjs",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Extracts JavaScript and JSON resource URLs from a webpage using Puppeteer.",
+  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
