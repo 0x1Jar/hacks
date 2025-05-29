@@ -1,9 +1,42 @@
-# unisub
-Find Unicode characters that might be converted to a given character under some encoding conversions.
+# unisub - Unicode Substitution Finder
 
-## Install
-```
-▶ go get -u github.com/tomnomnom/hacks/unisub
+`unisub` is a Go tool that helps find Unicode characters that might be confusable with or act as substitutions for a given input character. It checks a predefined list of "fallback" translations and also searches the Unicode range for characters that match the input character when case-folded (toLower or toUpper).
+
+## How it Works
+
+1.  **Input**: Takes a single character as a command-line argument. If multiple characters are provided, only the first one is used.
+2.  **Fallback Translations**:
+    *   It first consults an internal map (`translations.go`) for predefined "fallback" characters related to the input character.
+    *   If found, these are printed with their Unicode code point and URL-escaped form.
+3.  **Case-Folding Search**:
+    *   The tool then iterates through Unicode code points from `U+0001` to `U+10FFFF`.
+    *   For each character in this range (excluding the input character itself):
+        *   It checks if `strings.ToLower(string(char_from_range)) == input_char_to_match`.
+        *   It checks if `strings.ToUpper(string(char_from_range)) == input_char_to_match`.
+    *   Matching characters found via case-folding are printed with their details.
+4.  **Output**: Results are printed to standard output, indicating the type of match ("fallback", "toLower", "toUpper"), the character itself, its Unicode code point, and its URL-escaped representation.
+
+**Note on Performance**: The search for `toLower`/`toUpper` matches involves iterating over a very large range of Unicode code points, which can be slow.
+
+## Installation
+
+Ensure you have Go (version 1.24.3 or later, as specified in `go.mod`) installed.
+
+1.  **Clone the repository (if you haven't already):**
+    ```bash
+    git clone https://github.com/0x1Jar/new-hacks.git
+    cd new-hacks/unisub
+    ```
+
+2.  **Build the tool:**
+    ```bash
+    go build
+    ```
+    This will create a `unisub` executable in the current directory.
+
+Alternatively, you can install it directly if your Go environment is set up:
+```bash
+go install github.com/0x1Jar/new-hacks/unisub
 ```
 
 ## Usage
@@ -41,4 +74,3 @@ Find Unicode characters that might be converted to a given character under some 
 ₛ U+209B %E2%82%9B
 ſ U+017F %C5%BF
 ```
-
