@@ -57,7 +57,7 @@ The tool takes two optional command-line arguments:
 2.  Path to the subdomains file.
 
 ```bash
-./subs [path_to_domains_file] [path_to_subdomains_file]
+subs [path_to_domains_file] [path_to_subdomains_file]
 ```
 
 **Defaults:**
@@ -67,7 +67,7 @@ The tool takes two optional command-line arguments:
 **Example using provided files:**
 Ensure `domains` and `subdomains` files are in the same directory as the `subs` executable (or provide paths to them).
 ```bash
-./subs domains subdomains > found_subdomains.txt
+subs domains subdomains > found_subdomains.txt
 ```
 This command will:
 -   Read apex domains from the `domains` file.
@@ -78,7 +78,7 @@ This command will:
 **Example using default file names:**
 If you rename your input files to `apexes` and `subdomains` (or create symlinks), you can run:
 ```bash
-./subs > found_subdomains.txt
+subs > found_subdomains.txt
 ```
 
 ## Output
