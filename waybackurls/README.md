@@ -1,12 +1,16 @@
 # waybackurls
 
-Accept line-delimited domains on stdin, fetch known URLs from the Wayback Machine for `*.domain` and output them on stdout.
+Accept line-delimited domains on stdin, fetch known URLs from the Wayback Machine for the exact domain and output them on stdout.
 
 Usage example:
 
 ```
 ▶ cat domains.txt | waybackurls > urls
 ```
+
+Flags:
+- `-c <number>`: Number of concurrent requests (default: 10)
+- `-v`: Enable verbose output
 
 Install:
 
