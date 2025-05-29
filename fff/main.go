@@ -20,28 +20,33 @@ import (
 	"time"
 )
 
+const defaultConcurrency = 20
+
 func init() {
 	flag.Usage = func() {
 		h := []string{
 			"Request URLs provided on stdin fairly frickin' fast",
 			"",
 			"Options:",
+			"  -c, --concurrency <num>   Number of concurrent requests (default: 20)",
 			"  -b, --body <data>         Request body",
-			"  -d, --delay <delay>       Delay between issuing requests (ms)",
+			"  -d, --delay <delay>       Delay between issuing requests (ms) (applied per worker, not globally before each request)",
 			"  -H, --header <header>     Add a header to the request (can be specified multiple times)",
 			"  -k, --keep-alive          Use HTTP Keep-Alive",
 			"  -m, --method              HTTP method to use (default: GET, or POST if body is specified)",
-			"  -o, --output <dir>        Directory to save responses in (will be created)",
+			"  -o, --output <dir>        Directory to save responses in (will be created, default: out)",
 			"  -s, --save-status <code>  Save responses with given status code (can be specified multiple times)",
 			"  -S, --save                Save all responses",
 			"",
 		}
-
 		fmt.Fprintf(os.Stderr, strings.Join(h, "\n"))
 	}
 }
 
 func main() {
+	var concurrency int
+	flag.IntVar(&concurrency, "concurrency", defaultConcurrency, "")
+	flag.IntVar(&concurrency, "c", defaultConcurrency, "")
 
 	var body string
 	flag.StringVar(&body, "body", "", "")
@@ -49,19 +54,18 @@ func main() {
 
 	var keepAlives bool
 	flag.BoolVar(&keepAlives, "keep-alive", false, "")
-	flag.BoolVar(&keepAlives, "keep-alives", false, "")
-	flag.BoolVar(&keepAlives, "k", false, "")
+	flag.BoolVar(&keepAlives, "k", false, "") // Removed duplicate -keep-alives
 
 	var saveResponses bool
 	flag.BoolVar(&saveResponses, "save", false, "")
 	flag.BoolVar(&saveResponses, "S", false, "")
 
 	var delayMs int
-	flag.IntVar(&delayMs, "delay", 100, "")
-	flag.IntVar(&delayMs, "d", 100, "")
+	flag.IntVar(&delayMs, "delay", 0, "") // Default delay 0, applied per worker if > 0
+	flag.IntVar(&delayMs, "d", 0, "")
 
 	var method string
-	flag.StringVar(&method, "method", "GET", "")
+	flag.StringVar(&method, "method", "GET", "") // Default GET, auto POST if body
 	flag.StringVar(&method, "m", "GET", "")
 
 	var outputDir string
@@ -78,34 +82,32 @@ func main() {
 
 	flag.Parse()
 
-	delay := time.Duration(delayMs * 1000000)
-	client := newClient(keepAlives)
-	prefix := outputDir
+	if body != "" && method == "GET" { // Auto-set method to POST if body is provided and method is still GET
+		method = "POST"
+	}
 
+	delay := time.Duration(delayMs) * time.Millisecond // Corrected delay to use Millisecond
+	client := newClient(keepAlives, concurrency) // Pass concurrency to newClient
+	// prefix := outputDir // outputDir is used directly now
+
+	jobs := make(chan string)
 	var wg sync.WaitGroup
 
-	sc := bufio.NewScanner(os.Stdin)
-
-	for sc.Scan() {
-		rawURL := sc.Text()
+	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
-
-		time.Sleep(delay)
-
 		go func() {
 			defer wg.Done()
-
-			// create the request
-			var b io.Reader
-			if body != "" {
-				b = strings.NewReader(body)
-
-				// Can't send a body with a GET request
-				if method == "GET" {
-					method = "POST"
+			for rawURL := range jobs {
+				if delay > 0 {
+					time.Sleep(delay)
 				}
-			}
-			req, err := http.NewRequest(method, rawURL, b)
+
+				// create the request
+				var reqBody io.Reader
+				if body != "" {
+					reqBody = strings.NewReader(body)
+				}
+				req, err := http.NewRequest(method, rawURL, reqBody)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to create request: %s\n", err)
 				return
@@ -137,10 +139,12 @@ func main() {
 				return
 			}
 
-			// output files are stored in prefix/domain/normalisedpath/hash.(body|headers)
+			// output files are stored in outputDir/domain/normalisedpath/hash.(body|headers)
 			normalisedPath := normalisePath(req.URL)
-			hash := sha1.Sum([]byte(method + rawURL + body + headers.String()))
-			p := path.Join(prefix, req.URL.Hostname(), normalisedPath, fmt.Sprintf("%x.body", hash))
+			// Hash should ideally include method, URL, body, and specific headers for uniqueness if they vary per request.
+			// For simplicity, if headers are global, this is okay.
+			hash := sha1.Sum([]byte(req.Method + req.URL.String() + body + headers.String()))
+			p := path.Join(outputDir, req.URL.Hostname(), normalisedPath, fmt.Sprintf("%x.body", hash))
 			err = os.MkdirAll(path.Dir(p), 0750)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to create dir: %s\n", err)
@@ -162,7 +166,7 @@ func main() {
 			}
 
 			// create the headers file
-			headersPath := path.Join(prefix, req.URL.Hostname(), normalisedPath, fmt.Sprintf("%x.headers", hash))
+			headersPath := path.Join(outputDir, req.URL.Hostname(), normalisedPath, fmt.Sprintf("%x.headers", hash))
 			headersFile, err := os.Create(headersPath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to create file: %s\n", err)
@@ -181,11 +185,15 @@ func main() {
 			}
 			buf.WriteRune('\n')
 
-			// add the request body
-			if body != "" {
-				buf.WriteString(body)
+			// add the request body (if any)
+			// For GET/HEAD etc. body is nil. For POST/PUT it's present.
+			// The current 'body' variable is global. If body could change per request, this needs adjustment.
+			// For now, assuming 'body' is a global static body for all POST/PUT.
+			if req.Body != nil && body != "" { // Check if original body was set
+				buf.WriteString(body) // Write the original string body
 				buf.WriteString("\n\n")
 			}
+
 
 			// add the proto and status
 			buf.WriteString(fmt.Sprintf("< %s %s\n", resp.Proto, resp.Status))
@@ -196,46 +204,51 @@ func main() {
 					buf.WriteString(fmt.Sprintf("< %s: %s\n", k, v))
 				}
 			}
+			// No need to write response body to headers file. It's in the .body file.
 
-			// add the response body
-			_, err = io.Copy(headersFile, strings.NewReader(buf.String()))
+			_, err = headersFile.WriteString(buf.String()) // Use WriteString for efficiency
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to write file contents: %s\n", err)
+				fmt.Fprintf(os.Stderr, "failed to write headers file contents: %s\n", err)
 				return
 			}
 
 			// output the body filename for each URL
 			fmt.Printf("%s: %s %d\n", p, rawURL, resp.StatusCode)
-		}()
+
+			} // End of worker goroutine scope for 'rawURL'
+		}() // Removed passing rawURL, it's captured by the closure
 	}
 
+	sc := bufio.NewScanner(os.Stdin)
+	for sc.Scan() {
+		jobs <- sc.Text()
+	}
+	close(jobs)
 	wg.Wait()
-
 }
 
-func newClient(keepAlives bool) *http.Client {
-
+func newClient(keepAlives bool, numWorkers int) *http.Client { // Added numWorkers parameter
+	// TODO: Make timeout and other transport settings configurable via flags
 	tr := &http.Transport{
-		MaxIdleConns:      30,
-		IdleConnTimeout:   time.Second,
+		MaxIdleConns:      numWorkers * 2, // Use passed numWorkers
+		IdleConnTimeout:   30 * time.Second,
 		DisableKeepAlives: !keepAlives,
-		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true}, // Consider making this a flag
 		DialContext: (&net.Dialer{
-			Timeout:   time.Second * 10,
-			KeepAlive: time.Second,
+			Timeout:   10 * time.Second, // Default dial timeout
+			KeepAlive: 30 * time.Second,
 		}).DialContext,
 	}
 
-	re := func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
+	redirectPolicy := func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse // Do not follow redirects
 	}
 
 	return &http.Client{
 		Transport:     tr,
-		CheckRedirect: re,
-		Timeout:       time.Second * 10,
+		CheckRedirect: redirectPolicy,
+		Timeout:       20 * time.Second, // Overall request timeout
 	}
-
 }
 
 type headerArgs []string
