@@ -12,12 +12,12 @@ import (
 func main() {
 
 	var unique bool
-	flag.BoolVar(&unique, "u", false, "")
-	flag.BoolVar(&unique, "unique", false, "")
+	flag.BoolVar(&unique, "u", false, "Only output unique values")
+	// The --unique long form is implicitly handled by the custom flag.Usage
 
 	var verbose bool
-	flag.BoolVar(&verbose, "v", false, "")
-	flag.BoolVar(&verbose, "verbose", false, "")
+	flag.BoolVar(&verbose, "v", false, "Verbose mode (output URL parse errors)")
+	// The --verbose long form is implicitly handled by the custom flag.Usage
 
 	flag.Parse()
 
