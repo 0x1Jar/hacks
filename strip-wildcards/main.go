@@ -9,13 +9,11 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 var globalRandString string
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	globalRandString = randString(16)
 }
 
