@@ -36,8 +36,13 @@ func TestFormat(t *testing.T) {
 
 		actual := format(u, c.format)
 
+		if len(actual) == 0 {
+			t.Errorf("format(%s, %s) returned empty slice, want %s", c.url, c.format, c.expected)
+			continue
+		}
+
 		if actual[0] != c.expected {
-			t.Errorf("want %s for format(%s, %s); have %s", c.expected, c.url, c.format, actual)
+			t.Errorf("want '%s' for format(%s, %s); have '%s'", c.expected, c.url, c.format, actual[0])
 		}
 	}
 }
