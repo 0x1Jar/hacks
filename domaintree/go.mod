@@ -1,4 +1,4 @@
-module github.com/tomnomnom/hacks/domaintree
+module github.com/0x1Jar/new-hacks/domaintree
 
 go 1.21.1
 
