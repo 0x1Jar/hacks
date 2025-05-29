@@ -60,6 +60,16 @@ Or you can use `--format=map` and specify the name of each field:
 
 ## Install
 
+Ensure you have Go installed on your system. You can install `tojson` using:
+```bash
+go install github.com/0x1Jar/new-hacks/tojson
 ```
-▶ go get -u github.com/tomnomnom/hacks/tojson
+This will place the compiled binary in your Go bin directory (e.g., `$GOPATH/bin` or `$HOME/go/bin`).
+
+Alternatively, to build from source:
+```bash
+git clone https://github.com/0x1Jar/new-hacks.git
+cd new-hacks/tojson
+go build
 ```
+This will create a `tojson` executable in the current directory.
