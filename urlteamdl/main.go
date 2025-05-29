@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os" // Added os import
 	"time"
 )
 
@@ -21,20 +22,24 @@ func main() {
 
 	sinceStr := flag.Arg(0)
 	if sinceStr == "" {
-		fmt.Println("usage: urlteamdl <sinceISODate>")
-		return
+		fmt.Fprintln(os.Stderr, "usage: urlteamdl <sinceISODate>")
+		os.Exit(1)
 	}
 
 	sinceTime, err := time.Parse("2006-01-02", sinceStr)
 	if err != nil {
-		fmt.Println("invalid date! try e.g. 2017-10-26")
-		return
+		fmt.Fprintf(os.Stderr, "Error: Invalid date format for '%s'. Please use YYYY-MM-DD (e.g., 2017-10-26).\n", sinceStr)
+		os.Exit(1)
+	}
+
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
 	}
 
 	req, err := http.NewRequest("GET", searchURL, nil)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintf(os.Stderr, "Error creating request for search URL: %v\n", err)
+		os.Exit(1)
 	}
 
 	since := sinceTime.Format("2006-01-02")
@@ -48,15 +53,20 @@ func main() {
 	q.Add("output", "json")
 	req.URL.RawQuery = q.Encode()
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintf(os.Stderr, "Error fetching search results from %s: %v\n", req.URL.String(), err)
+		os.Exit(1)
 	}
 
 	defer res.Body.Close()
-	dec := json.NewDecoder(res.Body)
 
+	if res.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "Error: Received non-200 status code (%d) from search URL %s\n", res.StatusCode, req.URL.String())
+		os.Exit(1)
+	}
+
+	dec := json.NewDecoder(res.Body)
 	wrapper := &struct {
 		Response struct {
 			Docs []struct {
@@ -67,14 +77,14 @@ func main() {
 
 	err = dec.Decode(wrapper)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintf(os.Stderr, "Error decoding search results JSON: %v\n", err)
+		os.Exit(1)
 	}
 
 	for _, d := range wrapper.Response.Docs {
-		files, err := getDownloadURLs(d.Identifier)
+		files, err := getDownloadURLs(httpClient, d.Identifier) // Pass httpClient
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "Error getting download URLs for identifier %s: %v\n", d.Identifier, err)
 			continue
 		}
 
@@ -87,13 +97,17 @@ func main() {
 	}
 }
 
-func getDownloadURLs(ident string) ([]file, error) {
-
-	res, err := http.Get(fmt.Sprintf(metaURL, ident))
+func getDownloadURLs(client *http.Client, ident string) ([]file, error) { // Accept httpClient
+	metaRequestURL := fmt.Sprintf(metaURL, ident)
+	res, err := client.Get(metaRequestURL) // Use passed client
 	if err != nil {
-		return []file{}, err
+		return []file{}, fmt.Errorf("fetching metadata from %s: %w", metaRequestURL, err)
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return []file{}, fmt.Errorf("received non-200 status code (%d) from metadata URL %s", res.StatusCode, metaRequestURL)
+	}
 
 	wrapper := &struct {
 		Files []file `json:"files"`
@@ -101,6 +115,9 @@ func getDownloadURLs(ident string) ([]file, error) {
 
 	dec := json.NewDecoder(res.Body)
 	err = dec.Decode(wrapper)
+	if err != nil {
+		return []file{}, fmt.Errorf("decoding metadata JSON for %s: %w", ident, err)
+	}
 
-	return wrapper.Files, err
+	return wrapper.Files, nil
 }
