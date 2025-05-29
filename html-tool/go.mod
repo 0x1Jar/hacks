@@ -1,4 +1,4 @@
-module github.com/tomnomnom/hacks/html-tool
+module github.com/0x1Jar/new-hacks/html-tool
 
 go 1.18
 
