@@ -5,30 +5,37 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	// "io/ioutil" // No longer needed
-	"log" // Added for logging
+	"log"
 	"net/http"
 	"os"
-	"time" // Added for http client timeout
+	"sync" // Added for WaitGroup
+	"time"
 )
 
-const fetchURL = "http://web.archive.org/cdx/search/cdx?url=*.%s/*&output=json&fl=original&collapse=urlkey"
+const fetchURL = "http://web.archive.org/cdx/search/cdx?url=%s/*&output=json&fl=original&collapse=urlkey"
 
-var httpClient = &http.Client{
-	Timeout: 30 * time.Second,
+var (
+	concurrency int
+	verbose     bool
+	httpClient  = &http.Client{
+		Timeout: 30 * time.Second,
+	}
+)
+
+func init() {
+	flag.IntVar(&concurrency, "c", 10, "Number of concurrent requests")
+	flag.BoolVar(&verbose, "v", false, "Enable verbose output")
 }
 
 func main() {
+	flag.Parse()
 
 	var domains []string
-
-	flag.Parse()
 
 	if flag.NArg() > 0 {
 		// fetch for a single domain
 		domains = []string{flag.Arg(0)}
 	} else {
-
 		// fetch for all domains from stdin
 		sc := bufio.NewScanner(os.Stdin)
 		for sc.Scan() {
@@ -36,24 +43,50 @@ func main() {
 		}
 
 		if err := sc.Err(); err != nil {
-			// Using log.Fatalf for consistency with other tools if input reading fails critically
 			log.Fatalf("Error reading input: %v", err)
 		}
 	}
 
-	for _, domain := range domains {
-
-		urls, err := getWaybackURLs(domain)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to fetch URLs for [%s]: %v\n", domain, err)
-			continue
+	if len(domains) == 0 {
+		if verbose {
+			log.Println("No domains provided. Exiting.")
 		}
-
-		for _, url := range urls {
-			fmt.Println(url)
-		}
+		return
 	}
 
+	// Create a buffered channel to act as a worker queue
+	domainCh := make(chan string, concurrency)
+	var wg sync.WaitGroup
+
+	// Start worker goroutines
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for domain := range domainCh {
+				if verbose {
+					log.Printf("Fetching URLs for domain: %s\n", domain)
+				}
+				urls, err := getWaybackURLs(domain)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to fetch URLs for [%s]: %v\n", domain, err)
+					continue
+				}
+
+				for _, url := range urls {
+					fmt.Println(url)
+				}
+			}
+		}()
+	}
+
+	// Send domains to the channel
+	for _, domain := range domains {
+		domainCh <- domain
+	}
+	close(domainCh) // Close the channel once all domains are sent
+
+	wg.Wait() // Wait for all goroutines to finish
 }
 
 func getWaybackURLs(domain string) ([]string, error) {
