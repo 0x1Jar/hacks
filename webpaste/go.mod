@@ -1,3 +1,3 @@
-module github.com/tomnomnom/hacks/webpaste
+module github.com/0x1Jar/new-hacks/webpaste
 
-go 1.18
+go 1.24.3
