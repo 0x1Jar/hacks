@@ -9,10 +9,13 @@ if (fn == ""){
 }
 
 fs.readFile(fn, "utf8", function(err, data) {
-    // TODO: Trim the strings
+    if (err) {
+        console.error("Error reading file:", err.message);
+        process.exit(1);
+    }
     for (let token of acorn.tokenizer(data,{
         onComment: function(block, text, start, end){
-            console.log(text);
+            console.log(text.trim()); // Trimmed the comment text
         }
     })) {
         if (token.type == acorn.tokTypes.string){
