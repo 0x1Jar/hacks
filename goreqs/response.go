@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
+	// "io/ioutil" // Replaced with io.ReadAll
 	"strconv"
 	"strings"
 )
@@ -74,7 +74,7 @@ func NewResponse(conn io.Reader) (*Response, error) {
 		}
 
 	} else {
-		b, err := ioutil.ReadAll(r)
+		b, err := io.ReadAll(r) // Changed ioutil.ReadAll to io.ReadAll
 		if err != nil {
 			return nil, err
 		}
