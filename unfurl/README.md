@@ -63,3 +63,11 @@ cd new-hacks/unfurl
 go build
 ```
 This will create an `unfurl` executable in the current directory.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or open an issue.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
