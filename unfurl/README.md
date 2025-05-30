@@ -48,15 +48,19 @@ Examples:
   cat urls.txt | unfurl keys
   cat urls.txt | unfurl format %s://%d%p?%q
 
+```
+
 ## Installation
 
 Ensure you have Go installed on your system. You can install `unfurl` using:
+
 ```bash
 go install github.com/0x1Jar/new-hacks/unfurl
 ```
 This will place the compiled binary in your Go bin directory (e.g., `$GOPATH/bin` or `$HOME/go/bin`).
 
 Alternatively, to build from source:
+
 ```bash
 git clone https://github.com/0x1Jar/new-hacks.git
 cd new-hacks/unfurl
