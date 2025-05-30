@@ -55,7 +55,7 @@ Examples:
 Ensure you have Go installed on your system. You can install `unfurl` using:
 
 ```bash
-go install github.com/0x1Jar/new-hacks/unfurl
+go install github.com/0x1Jar/new-hacks/unfurl@latest
 ```
 This will place the compiled binary in your Go bin directory (e.g., `$GOPATH/bin` or `$HOME/go/bin`).
 
