@@ -10,6 +10,32 @@
 - Allows specifying delimiter exceptions (characters that should not be treated as token boundaries).
 - Detects and decodes URL-encoded tokens.
 
+## Installation
+
+Make sure you have Go installed (version 1.18 or newer recommended).
+
+Clone the repository and build the tool:
+
+```sh
+git clone https://github.com/0x1Jar/new-hacks.git
+cd new-hacks/tok
+go build
+```
+
+This will produce a `tok` binary in the current directory. You can move it to a directory in your `$PATH` for easier use:
+
+```sh
+mv tok ~/go/bin/
+```
+
+Or install directly with:
+
+```sh
+go install github.com/0x1Jar/new-hacks/tok@latest
+```
+
+Now you can use `tok` from anywhere in your terminal.
+
 ## Usage
 
 Pipe text to the tool via standard input:
