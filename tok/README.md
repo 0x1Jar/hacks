@@ -95,6 +95,36 @@ hello world
 test/data
 ```
 
+### Generating a Wordlist from Waybackurls
+Suppose you use [waybackurls](https://github.com/tomnomnom/waybackurls) to gather URLs for a domain, and want to extract unique words or tokens for use in wordlists or further analysis.
+
+Command:
+```
+echo "https://example.com/login.php?id=123\nhttps://example.com/assets/js/app.js\nhttps://example.com/profile/username" | tok -min 3
+```
+Output:
+```
+https
+://
+example
+com
+login
+php
+id
+123
+assets
+js
+app
+profile
+username
+```
+
+Or, in a real workflow:
+```
+waybackurls example.com | tok -min 4 -alpha-num-only
+```
+This will extract tokens of at least 4 characters, containing both letters and numbers, from all URLs found by waybackurls.
+
 ## How it works
 
 `tok` reads input one rune at a time. It groups consecutive letters and numbers into tokens. When a non-letter/number character is encountered (unless it's in the delimiter exceptions), it checks if the current token meets the length and content requirements, then outputs it. If a token contains a `%` character, it attempts to URL-decode it before outputting.
