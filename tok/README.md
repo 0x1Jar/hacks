@@ -12,30 +12,87 @@
 
 ## Usage
 
+Pipe text to the tool via standard input:
+
 ```
 cat file.txt | tok [options]
 ```
+Or run interactively and type/paste input, then press Ctrl+D (EOF) to process.
 
 ### Options
 
 - `-min int`  
   Minimum length of string to be output (default: 1)
-
 - `-max int`  
   Maximum length of string to be output (default: 25)
-
 - `-alpha-num-only`  
   Only output strings containing at least one letter and one number
-
 - `-delim-exceptions string`  
   Characters that should not be treated as delimiters
 
-## Example
+## Examples
 
-Extract tokens of at least 5 characters, containing both letters and numbers:
-
+### Basic Tokenization
+Input:
 ```
-cat input.txt | tok -min 5 -alpha-num-only
+hello world123 test42 foo_bar
+```
+Command:
+```
+echo "hello world123 test42 foo_bar" | tok
+```
+Output:
+```
+hello
+world123
+test42
+foo
+bar
+```
+
+### Minimum Length and Alpha-Numeric Only
+Input:
+```
+abc 123 ab12 1a2b3c
+```
+Command:
+```
+echo "abc 123 ab12 1a2b3c" | tok -min 4 -alpha-num-only
+```
+Output:
+```
+ab12
+1a2b3c
+```
+
+### Delimiter Exceptions
+Input:
+```
+file-name_v1.0 test.data
+```
+Command:
+```
+echo "file-name_v1.0 test.data" | tok -delim-exceptions "-."
+```
+Output:
+```
+file-name_v1.0
+test.data
+```
+
+### URL Decoding
+Input:
+```
+hello%20world test%2Fdata
+```
+Command:
+```
+echo "hello%20world test%2Fdata" | tok
+```
+Output:
+```
+hello world
+test/data
 ```
 
 ## How it works
