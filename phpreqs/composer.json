@@ -1,0 +1,26 @@
+{
+    "name": "0x1jar/phpreqs",
+    "description": "A simple PHP library for making raw HTTP/S requests.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tom Hudson",
+            "homepage": "https://github.com/tomnomnom"
+        },
+        {
+            "name": "0x1Jar (Maintainer/Adapter)",
+            "homepage": "https://github.com/0x1Jar"
+        }
+    ],
+    "require": {
+        "php": ">=7.0"
+    },
+    "autoload": {
+        "classmap": [
+            "rawrequest.php",
+            "request.php",
+            "response.php"
+        ]
+    }
+}

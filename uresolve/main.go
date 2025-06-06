@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log" // Added log import
 	"net"
 	"os"
 	"sync"
@@ -26,5 +27,10 @@ func main() {
 			wg.Done()
 		}()
 	}
+
+	if err := sc.Err(); err != nil {
+		log.Fatalf("Error reading input: %v", err)
+	}
+
 	wg.Wait()
 }

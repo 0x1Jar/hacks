@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
+	// "io/ioutil" // Replaced by io.Discard
 	"log"
 	"net"
 	"net/http"
@@ -125,7 +125,7 @@ func sendRequests(c *http.Client, u string, headerPatterns, paramPatterns map[st
 
 		resp, err := c.Do(req)
 		if resp != nil {
-			io.Copy(ioutil.Discard, resp.Body)
+			io.Copy(io.Discard, resp.Body) // Changed ioutil.Discard to io.Discard
 			resp.Body.Close()
 		}
 		if err != nil {

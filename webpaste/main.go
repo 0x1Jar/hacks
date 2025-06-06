@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log" // Added log import
 	"net/http"
 	"os"
 )
@@ -80,5 +81,9 @@ func main() {
 	}()
 
 	http.HandleFunc("/", payloadHandler)
-	http.ListenAndServe(address+":"+port, nil)
+	listenAddr := address + ":" + port
+	fmt.Fprintf(os.Stderr, "Listening on %s\n", listenAddr)
+	if err := http.ListenAndServe(listenAddr, nil); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }

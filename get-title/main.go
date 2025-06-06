@@ -39,13 +39,34 @@ func extractTitle(req *http.Request, resp *http.Response, err error) {
 }
 
 func main() {
+	// Use a different name for the flag variable to avoid redeclaration if 'concurrency' is needed elsewhere.
+	// However, since it's only used to set p.SetConcurrency, we can use it directly.
+	var concurrencyLevel int
+	flag.IntVar(&concurrencyLevel, "c", 20, "Concurrency level")
 
-	var concurrency = 20
-	flag.IntVar(&concurrency, "c", 20, "Concurrency")
+	var skipVerifyFlag bool
+	flag.BoolVar(&skipVerifyFlag, "k", false, "Skip TLS certificate verification (insecure)")
+	flag.BoolVar(&skipVerifyFlag, "skip-verify", false, "Skip TLS certificate verification (insecure) (long form)")
+
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Fetch and get the title of HTML pages from URLs provided on stdin.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\nOptions:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
-	p := gahttp.NewPipelineWithClient(gahttp.NewClient(gahttp.SkipVerify))
-	p.SetConcurrency(concurrency)
+	var p *gahttp.Pipeline
+	if skipVerifyFlag {
+		client := gahttp.NewClient(gahttp.SkipVerify)
+		p = gahttp.NewPipelineWithClient(client)
+	} else {
+		// For default client (with verification), NewPipeline() is sufficient
+		// as it creates a default client internally.
+		p = gahttp.NewPipeline()
+	}
+
+	p.SetConcurrency(concurrencyLevel)
 	extractFn := gahttp.Wrap(extractTitle, gahttp.CloseBody)
 
 	sc := bufio.NewScanner(os.Stdin)

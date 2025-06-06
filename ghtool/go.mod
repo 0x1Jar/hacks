@@ -1,4 +1,4 @@
-module github.com/tomnomnom/hacks/ghtool
+module github.com/0x1Jar/new-hacks/ghtool
 
 go 1.18
 

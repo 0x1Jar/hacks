@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// initialise db file
-	if flag.Arg(0) == "init" {
+	if flag.NArg() > 0 && flag.Arg(0) == "init" {
 		err := initModules(db)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "init error: %s\n", err)
@@ -40,46 +40,77 @@ func main() {
 		return
 	}
 
-	// TODO: accept single command as args / prefix to all stdin lines
+	// Handle commands from arguments
+	if flag.NArg() >= 2 {
+		action := flag.Arg(0)
+		typ := flag.Arg(1)
+		arg := ""
+		if flag.NArg() > 2 {
+			arg = flag.Arg(2)
+		}
 
+		// Construct the command line as if it came from stdin
+		// This allows us to reuse the tokenize and processing logic
+		cmdLine := fmt.Sprintf("%s %s %s", action, typ, arg)
+		processCommand(strings.TrimSpace(cmdLine), db)
+		return
+	}
+
+	// If no arguments are provided (or only 'init'), read from stdin
 	for sc.Scan() {
 		line := sc.Text()
-		op, err := tokenize(line)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
+		if line == "" {
 			continue
 		}
+		processCommand(line, db)
+	}
+}
 
-		mod, err := getModule(op, db)
+func processCommand(line string, db *sql.DB) {
+	op, err := tokenize(line)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parse error: %s\n", err)
+		return
+	}
+
+	mod, err := getModule(op, db)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "module error: %s\n", err)
+		return
+	}
+
+	switch op.action {
+	case "add":
+		err = mod.Add(op.arg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "module error: %s\n", err)
-			continue
+			fmt.Fprintf(os.Stderr, "add error: %s\n", err)
+			return
+		}
+		fmt.Printf("Added: %s\n", op.arg) // Provide feedback for CLI usage
+
+	case "all":
+		vals, err := mod.All()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "all error: %s\n", err)
+			return
+		}
+		if len(vals) == 0 {
+			fmt.Println("No domains found.") // Provide feedback for CLI usage
+			return
+		}
+		for _, v := range vals {
+			fmt.Println(v)
 		}
 
-		switch op.action {
-		case "add":
-			err = mod.Add(op.arg)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "add error: %s\n", err)
-				continue
-			}
-
-		case "all":
-			vals, err := mod.All()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "all error: %s\n", err)
-				continue
-			}
-			for _, v := range vals {
-				fmt.Println(v)
-			}
-
-		case "delete":
-			err = mod.Delete(op.arg)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "add error: %s\n", err)
-			}
+	case "delete":
+		err = mod.Delete(op.arg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "delete error: %s\n", err) // Corrected "add error" to "delete error"
+			return
 		}
+		fmt.Printf("Deleted: %s\n", op.arg) // Provide feedback for CLI usage
+	default:
+		fmt.Fprintf(os.Stderr, "unknown action: %s\n", op.action)
 	}
 }
 

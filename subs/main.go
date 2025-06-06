@@ -29,13 +29,15 @@ func main() {
 
 	d, err := os.Open(domainsFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to open domains file %s: %v", domainsFile, err)
 	}
+	defer d.Close()
 
 	s, err := os.Open(subdomainsFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to open subdomains file %s: %v", subdomainsFile, err)
 	}
+	defer s.Close()
 
 	ds := bufio.NewScanner(d)
 	ss := bufio.NewScanner(s)
@@ -78,7 +80,7 @@ func main() {
 
 	// check for errors reading the list of domains
 	if err := ds.Err(); err != nil {
-		log.Println(err)
+		log.Fatalf("Error reading domains file %s: %v", domainsFile, err)
 	}
 
 	// look up each sub for every domain
